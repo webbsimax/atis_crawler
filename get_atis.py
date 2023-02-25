@@ -99,7 +99,7 @@ def makeFile(atis,airport):
 
 def save_sql(atis):
     import mysql.connector
-    from datetime import datetime, timezone
+    from datetime import datetime, timezone, timedelta
     from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD 
     print (SQL_USER)
     mydb = mysql.connector.connect(
@@ -111,7 +111,7 @@ def save_sql(atis):
     
     mycursor = mydb.cursor()
     
-    sql = "SELECT id, atis, datetime_utc FROM adamw780_atis_log.{} WHERE airport = %s ORDER BY datetime_utc DESC".format("atis_log" + ("_test" if TESTING else ""))
+    sql = "SELECT id, atis, datetime_utc FROM adamw780_atis_log.{} WHERE airport = %s ORDER BY datetime_utc DESC LIMIT 1".format("atis_log" + ("_test" if TESTING else ""))
     val = ((atis.airport,))
     mycursor.execute(sql, val)
     result = mycursor.fetchone()
@@ -123,6 +123,13 @@ def save_sql(atis):
         sql = "INSERT INTO adamw780_atis_log.{} (datetime_utc, airport, atis) VALUES (%s, %s, %s)".format("atis_log" + ("_test" if TESTING else ""))
         val = (datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), atis.airport,atis.atis_text)
         mycursor.execute(sql, val)
+        
+        # Update the previous entry's end time
+        if result != None:
+            sql = "UPDATE adamw780_atis_log.{} SET dt_end = %s WHERE id = %s".format("atis_log_detailed" + ("_test" if TESTING else ""))
+            dt_end = atis.dt_start - timedelta(minutes=1)
+            val = (dt_end.strftime("%Y-%m-%d %H:%M:%S") ,result[0],)
+            mycursor.execute(sql, val) 
         mydb.commit()
         
         # Get the ID created so that it matches the detail table
@@ -138,7 +145,7 @@ def save_sql(atis):
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""".format("atis_log_detailed" + ("_test" if TESTING else ""))
         val = (atis_id, atis.airport, atis.dt_start.strftime("%Y-%m-%d %H:%M:%S"), "", atis.information, atis.runway, 
                atis.qnh, atis.wind, atis.wind_direction, atis.wind_speed, atis.wind_notes, 
-               "","","", atis.atis_text, atis.note)
+               atis.cloud,atis.visibility, atis.lvo, atis.atis_text, atis.note)
         print(val)
         mycursor.execute(sql, val)
         mydb.commit()

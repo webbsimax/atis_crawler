@@ -11,8 +11,9 @@ class Atis:
         self.dictionary = self.parse_atis(got_time=_got_time)
         self.runway = self._clean_runway(self.dictionary['RWY']) if 'RWY' in self.dictionary.keys()  else "n/a"
         
-        self.cavok = "TRUE" if "CAVOK" in self.atis_text else "FALSE"
-        self.visibility = "CAVOK" if self.cavok == "TRUE" else '|'.join([self.dictionary[i] for i in ["VIS","RWY VIS","RVR"] if i in self.dictionary.keys()])
+        self.cavok = True if "CAVOK" in self.atis_text else "FALSE"
+        
+        self.visibility = "9999" if "CAVOK" in self.atis_text else self.dictionary["VIS"] if "VIS" in self.dictionary.keys() else "n/a"
         
         self.wind = '|'.join([self.dictionary[i] for i in ["WND", "WIND"] if i in self.dictionary.keys()])
         self._clean_wind(self.wind)
@@ -48,11 +49,11 @@ class Atis:
                                                        
         import re
         if re.match("^(\d+|VRB)/(\d+)",wind):
-            # then wind is of format 180/20
+            # then wind is of format 180/20 or VRB/20
             self.wind_direction,self.wind_speed,self.wind_notes  = re.findall("^(\d+|VRB)/(\d+)(.*)",self.wind)[0]
         elif re.match("^(\d+)-(\d+)/(\d+)",wind):
             # then wind is of the format 180-190/20
-            self.wind_direction,self.wind_speed, self.wind_notes  = re.findall("^(\d+|VRB)/(\d+)(.*)",self.wind)[0]
+            self.wind_direction,self.wind_speed, self.wind_notes  = re.findall("^(\d+-\d+)/(\d+)(.*)",self.wind)[0]
             self.wind_notes + " VRB_DIR"
         elif re.match("^(VRB) (\d+)",wind):
             # sometimes wind is reported VBR without the "/"
