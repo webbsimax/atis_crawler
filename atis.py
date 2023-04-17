@@ -9,21 +9,26 @@ class Atis:
         self.note = "" # We'll use this if any possible warnings come up
      
         self.dictionary = self.parse_atis(got_time=_got_time)
-        self.runway = self._clean_runway(self.dictionary['RWY']) if 'RWY' in self.dictionary.keys()  else "n/a"
         
-        self.cavok = True if "CAVOK" in self.atis_text else "FALSE"
-        
-        self.visibility = "9999" if "CAVOK" in self.atis_text else self.dictionary["VIS"] if "VIS" in self.dictionary.keys() else "n/a"
-        
-        self.wind = '|'.join([self.dictionary[i] for i in ["WND", "WIND"] if i in self.dictionary.keys()])
-        self._clean_wind(self.wind)
-        self.cloud = '|'.join([self.dictionary[i] for i in ["CLD", "CLOUD"] if i in self.dictionary.keys()])
-        self.rvr = self.dictionary['RVR'] if 'RVR' in self.dictionary.keys()  else "n/a"
-        self.lvo = "TRUE" if "LVO" in self.atis_text or "LOW VIS" in self.atis_text else "FALSE"
-        
-        self.qnh = self.dictionary['QNH'] if 'QNH' in self.dictionary.keys() else "n/a"
-        self.cloud = self.dictionary['CLD'] if 'CLD' in self.dictionary.keys() else "n/a"
-        
+        if self.information == "Z":
+            # Tower closed
+            self.note += "Tower Closed"
+        else:
+            self.runway = self._clean_runway(self.dictionary['RWY']) if 'RWY' in self.dictionary.keys()  else "n/a"
+            
+            self.cavok = True if "CAVOK" in self.atis_text else "FALSE"
+            
+            self.visibility = "9999" if "CAVOK" in self.atis_text else self.dictionary["VIS"] if "VIS" in self.dictionary.keys() else "n/a"
+            
+            self.wind = '|'.join([self.dictionary[i] for i in ["WND", "WIND"] if i in self.dictionary.keys()])
+            self._clean_wind(self.wind)
+            self.cloud = '|'.join([self.dictionary[i] for i in ["CLD", "CLOUD"] if i in self.dictionary.keys()])
+            self.rvr = self.dictionary['RVR'] if 'RVR' in self.dictionary.keys()  else "n/a"
+            self.lvo = "TRUE" if "LVO" in self.atis_text or "LOW VIS" in self.atis_text else "FALSE"
+            
+            self.qnh = self.dictionary['QNH'] if 'QNH' in self.dictionary.keys() else "n/a"
+            self.cloud = self.dictionary['CLD'] if 'CLD' in self.dictionary.keys() else "n/a"
+            
     def line(self):
         return '"' + '","'.join([self.id,
                                  self.station,
@@ -154,6 +159,8 @@ class Atis:
                 self.information = line[10]
                 self.airport = line[5:9]
                 
+                
+               
                 # Get a start day/time
                 
                 now = datetime.utcnow() if got_time == None else got_time
@@ -186,7 +193,7 @@ class Atis:
             elif k != None:
                 d[k]+=(" " + line)
             
-            elif len(line) >0:
+            elif len(line) >0 and self.information != "Z":
                 print ("Unable to parse line: "+line)
         return d
             
