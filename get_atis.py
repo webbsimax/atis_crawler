@@ -189,7 +189,7 @@ def main():
         
     login(driver)
    
-    airports = ["YMML" , "YMEN", "YSSY", "YBBN", "YPPH", "YPAD"]
+    airports = ["YMML" , "YMEN", "YSSY", "YBBN", "YPPH", "YPAD", "YMAV"]
     
     b = get_briefing(airports, driver)
     #print(b)    
