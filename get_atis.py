@@ -54,7 +54,7 @@ def login(driver):
     
     
     
-def get_briefing(airport,driver):
+def get_briefing(airports,driver):
     """
     Use the headless browser (driver) to collect a breifing for the airport sent
     
@@ -63,9 +63,10 @@ def get_briefing(airport,driver):
 
     driver.get("https://www.airservicesaustralia.com/naips/Briefing/Location")
     
-    elem = driver.find_element(By.ID,"Locations_0_")
-    elem.clear()
-    elem.send_keys(airport)
+    for i in range(len(airports)):
+        elem = driver.find_element(By.ID,"Locations_{}_".format(i))
+        elem.clear()
+        elem.send_keys(airports[i])
     
     elem = driver.find_element(By.ID,"ChartsChkBox")
     elem.click()
@@ -87,22 +88,22 @@ def get_briefing(airport,driver):
         logging.debug("Unable to find briefing")
         print("unable to get briefing")
 
-    brief_text = driver.find_elements(By.CLASS_NAME,"briefing")
+    return driver.find_elements(By.CLASS_NAME,"briefing")[0].text
     
-    return [b.text for b in brief_text]
 
-def read_atis(b, airport):
+
+def read_atis(b):
     """
-    Find the ATIS within the briefing
-    Then create the Atis object
+    Find the ATISes within the briefing
+    Then create the Atis 
+    
+    Return a list of ATIS objects
     """
     
     import re
     from atis import Atis
-    
-    atis_text = re.findall(r'ATIS.*$',b[0],flags=re.DOTALL)[0]
-    atis = Atis(atis_text)
-    return atis 
+    atis_texts = re.findall(r'ATIS.*(?:\r?\n(?!\r?\n).*)*',b) #find everything between ATIS and double newline
+    return [Atis(atis_text) for atis_text in atis_texts] 
     
 
 def save_sql(atis):
@@ -180,19 +181,22 @@ def main():
     
     if os.name == 'nt':
         options.binary_location = r'C:\Program Files\Mozilla Firefox\firefox.exe'
-        
-        driver = webdriver.Firefox(executable_path=r'C:\Users\adam\Documents\Development\GetAtis\geckodriver.exe',options=options)
+        driver = webdriver.Firefox(options = options)
+        #driver = webdriver.Firefox(executable_path=r'C:\Users\adam\Documents\Development\GetAtis\geckodriver.exe',options=options)
     else:
         driver = webdriver.Firefox(options=options)
         
         
     login(driver)
    
-    airports = ["YMML" , "YMEN"]
-    for AIRPORT in airports:  
-         b = get_briefing(AIRPORT,driver)
-         atis = read_atis(b,"YMML")
-         save_sql(atis)
+    airports = ["YMML" , "YMEN", "YSSY", "YBBN", "YPPH", "YPAD"]
+    
+    b = get_briefing(airports, driver)
+    #print(b)    
+    
+    list_atis = read_atis(b)
+    for atis in list_atis:
+        save_sql(atis)
     
     
     
