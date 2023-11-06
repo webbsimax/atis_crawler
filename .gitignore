@@ -12,3 +12,5 @@ atis_errors.log
 geckodriver.log
 
 *.csv
+
+text_notam.py
