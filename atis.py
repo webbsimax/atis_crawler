@@ -30,7 +30,7 @@ class Atis:
             self.rvr = self.dictionary['RVR'] if 'RVR' in self.dictionary.keys()  else "n/a"
             self.lvo = "TRUE" if "LVO" in self.atis_text or "LOW VIS" in self.atis_text else "FALSE"
             
-            self.qnh = self.dictionary['QNH'] if 'QNH' in self.dictionary.keys() else "n/a"
+            self.qnh = self.dictionary['QNH'][:4] if 'QNH' in self.dictionary.keys() else "n/a"
             self.cloud = self.dictionary['CLD'] if 'CLD' in self.dictionary.keys() else "n/a"
             
     def line(self):
