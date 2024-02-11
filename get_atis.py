@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import logging
 
-TESTING = True
+TESTING = False
 
 def login(driver):
     """
@@ -19,17 +19,18 @@ def login(driver):
     from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD 
     
     print("Logging into NAIPS")
-    
     mydb = mysql.connector.connect(
         host=SQL_HOST,
         user=SQL_USER,
-        password=SQL_PASSWORD
+        password=SQL_PASSWORD,
+        ssl_verify_identity =True,
+        ssl_ca = "/etc/ssl/cert.pem"
         )
    
     driver.get("https://www.airservicesaustralia.com/naips/Account/LogOn")
     assert "Login" in driver.title
     mycursor = mydb.cursor()
-    sql = "SELECT username, password FROM adamw780_atis_log.user_details ORDER BY created_at DESC"
+    sql = "SELECT username, password FROM user_details ORDER BY created_at DESC"
     mycursor.execute(sql)
     NAIPS_USER, NAIPS_PASSWORD =  mycursor.fetchone()
     elem = driver.find_element(By.NAME, "UserName")
@@ -133,41 +134,44 @@ def save_sql_atis(atis):
     mydb = mysql.connector.connect(
         host=SQL_HOST,
         user=SQL_USER,
-        password=SQL_PASSWORD
+        password=SQL_PASSWORD,
+        database="atis_log",
+        ssl_verify_identity =True,
+        ssl_ca = "/etc/ssl/cert.pem"
         )
     
     
     mycursor = mydb.cursor()
     
-    sql = "SELECT id, atis, datetime_utc FROM adamw780_atis_log.{} WHERE airport = %s ORDER BY datetime_utc DESC LIMIT 1".format("atis_log" + ("_test" if TESTING else ""))
+    sql = "SELECT id, atis, datetime_utc FROM {} WHERE airport = %s ORDER BY datetime_utc DESC LIMIT 1".format("atis_log" + ("_test" if TESTING else ""))
     val = ((atis.airport,))
     mycursor.execute(sql, val)
     result = mycursor.fetchone()
     
     if result == None or result[1] != atis.atis_text:
         # We have a new atis
-        
+        # None is for the first entry in the table
         # Update the basic table
-        sql = "INSERT INTO adamw780_atis_log.{} (datetime_utc, airport, atis) VALUES (%s, %s, %s)".format("atis_log" + ("_test" if TESTING else ""))
+        sql = "INSERT INTO {} (datetime_utc, airport, atis) VALUES (%s, %s, %s)".format("atis_log" + ("_test" if TESTING else ""))
         val = (datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"), atis.airport,atis.atis_text)
         mycursor.execute(sql, val)
         
         # Update the previous entry's end time
         if result != None:
-            sql = "UPDATE adamw780_atis_log.{} SET dt_end = %s WHERE id = %s".format("atis_log_detailed" + ("_test" if TESTING else ""))
+            sql = "UPDATE {} SET dt_end = %s WHERE id = %s".format("atis_log_detailed" + ("_test" if TESTING else ""))
             dt_end = atis.dt_start - timedelta(minutes=1)
             val = (dt_end.strftime("%Y-%m-%d %H:%M:%S") ,result[0],)
             mycursor.execute(sql, val) 
         mydb.commit()
         
         # Get the ID created so that it matches the detail table
-        sql = "SELECT id FROM adamw780_atis_log.{} WHERE atis = %s".format("atis_log" + ("_test" if TESTING else ""))
-        val = (atis.atis_text,)
+        sql = "SELECT id FROM {} WHERE airport = %s ORDER BY datetime_utc DESC LIMIT 1".format("atis_log" + ("_test" if TESTING else ""))
+        val = (atis.airport,)
         mycursor.execute(sql, val)
         atis_id =  mycursor.fetchone()[0]
         
         # Create the detailed record
-        sql = """INSERT INTO adamw780_atis_log.{} (id, airport, dt_start, dt_end, information,
+        sql = """INSERT INTO {} (id, airport, dt_start, dt_end, information,
                                                                 runway_mode, qnh, wind, wind_direction, wind_speed, wind_notes,
                                                                 cloud, visibility, lvo, atis_text, notes) 
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""".format("atis_log_detailed" + ("_test" if TESTING else ""))
@@ -191,13 +195,17 @@ def save_sql_notam(notam):
     mydb = mysql.connector.connect(
         host=SQL_HOST,
         user=SQL_USER,
-        password=SQL_PASSWORD
+        password=SQL_PASSWORD,
+        database="atis_log",
+        #ssl_mode = "VERIFY_IDENTITY",
+        ssl_verify_identity =True,
+        ssl_ca = "/etc/ssl/cert.pem"
         )
     
     
     mycursor = mydb.cursor()
     
-    sql = "SELECT id, notam_id FROM adamw780_atis_log.{} WHERE notam_id = %s and airspace_id = %s".format("notam_log" + ("_test" if TESTING else ""))
+    sql = "SELECT id, notam_id FROM {} WHERE notam_id = %s and airspace_id = %s".format("notam_log" + ("_test" if TESTING else ""))
     val = ((notam.notam_id,notam.airspace_id))
     mycursor.execute(sql, val)
     result = mycursor.fetchone()
@@ -207,14 +215,14 @@ def save_sql_notam(notam):
         # We have a new notam!
         
         # Update the basic table
-        sql = "INSERT INTO adamw780_atis_log.{} (notam_id, notam_text, first_seen, airspace_id) VALUES (%s, %s, %s, %s)".format("notam_log" + ("_test" if TESTING else ""))
+        sql = "INSERT INTO {} (notam_id, notam_text, first_seen, airspace_id) VALUES (%s, %s, %s, %s)".format("notam_log" + ("_test" if TESTING else ""))
         val = (notam.notam_id,notam.notam_text, datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),notam.airspace_id)
         mycursor.execute(sql, val)
         
         mydb.commit()
         
         # Get the ID created so that it matches the detail table
-        sql = "SELECT id FROM adamw780_atis_log.{} WHERE notam_id = %s AND airspace_id = %s".format("notam_log" + ("_test" if TESTING else ""))
+        sql = "SELECT id FROM {} WHERE notam_id = %s AND airspace_id = %s".format("notam_log" + ("_test" if TESTING else ""))
         val = (notam.notam_id,notam.airspace_id)
         mycursor.execute(sql, val)
         notam_pk =  mycursor.fetchone()[0]
@@ -222,7 +230,7 @@ def save_sql_notam(notam):
       
         # Create records of open/close
         for opening in notam.list_open_close:
-            sql = """INSERT INTO adamw780_atis_log.{} (notam_log_id, opening_dtg, closing_dtg) 
+            sql = """INSERT INTO {} (notam_log_id, opening_dtg, closing_dtg) 
                     VALUES (%s,%s,%s)""".format("notam_airspace_open" + ("_test" if TESTING else ""))
             val = (notam_pk, opening[0].strftime("%Y-%m-%d %H:%M:%S"), opening[1].strftime("%Y-%m-%d %H:%M:%S"))
         
