@@ -1,7 +1,7 @@
 class Atis:
-    #d, airport, dt_start, dt_end, information, 
-    #runway_mode, qnh, wind_direction, wind_speed, 
-    #cloud, visibility, lvo, atis_text, notes
+#d, airport, dt_start, dt_end, information, 
+#runway_mode, qnh, wind_direction, wind_speed, 
+#cloud, visibility, lvo, atis_text, notes
     
     def __init__(self,atis_text,_got_time=None):    
     
@@ -13,6 +13,10 @@ class Atis:
         if self.information == "Z":
             # Tower closed
             self.note += "Tower Closed"
+            self.runway = self.wind = self.wind_speed = "N/A"
+            self.wind_direction = self.wind_notes = self.cloud = "N/A"
+            self.visibility = self.lvo = "N/A"
+            self.qnh = 0
         else:
             self.runway = self._clean_runway(self.dictionary['RWY']) if 'RWY' in self.dictionary.keys()  else "n/a"
             
