@@ -7,7 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import logging
 
-TESTING = False
+TESTING = True
 
 def login(driver):
     """
@@ -15,17 +15,14 @@ def login(driver):
         Get the username and password from the SQL database
     """
     
-    import mysql.connector
-    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD 
+    import psycopg2
+    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD, SQL_DB, SQL_PORT
     
     print("Logging into NAIPS")
-    mydb = mysql.connector.connect(
-        host=SQL_HOST,
-        user=SQL_USER,
-        password=SQL_PASSWORD,
-        ssl_verify_identity =True,
-        ssl_ca = "/etc/ssl/cert.pem"
-        )
+
+    connection_String = 'postgresql://{}:{}@{}:{}/atis-log-13694.{}?sslmode=verify-full'.format(
+        SQL_USER,SQL_PASSWORD,SQL_HOST,SQL_PORT,SQL_DB)
+    mydb = psycopg2.connect(connection_String)
    
     driver.get("https://www.airservicesaustralia.com/naips/Account/LogOn")
     assert "Login" in driver.title
@@ -127,18 +124,15 @@ def read_notams(b):
         return []
 
 def save_sql_atis(atis):
-    import mysql.connector
+    import psycopg2
     from datetime import datetime, timezone, timedelta
-    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD 
+    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD, SQL_DB, SQL_PORT
 
-    mydb = mysql.connector.connect(
-        host=SQL_HOST,
-        user=SQL_USER,
-        password=SQL_PASSWORD,
-        database="atis_log",
-        ssl_verify_identity =True,
-        ssl_ca = "/etc/ssl/cert.pem"
-        )
+
+    connection_String = 'postgresql://{}:{}@{}:{}/atis-log-13694.{}?sslmode=verify-full'.format(
+        SQL_USER,SQL_PASSWORD,SQL_HOST,SQL_PORT,SQL_DB)
+    mydb = psycopg2.connect(connection_String)
+   
     
     
     mycursor = mydb.cursor()
@@ -171,14 +165,14 @@ def save_sql_atis(atis):
         atis_id =  mycursor.fetchone()[0]
         
         # Create the detailed record
-        sql = """INSERT INTO {} (id, airport, dt_start, dt_end, information,
+        sql = """INSERT INTO {} (id, airport, dt_start, information,
                                                                 runway_mode, qnh, wind, wind_direction, wind_speed, wind_notes,
                                                                 cloud, visibility, lvo, atis_text, notes) 
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""".format("atis_log_detailed" + ("_test" if TESTING else ""))
-        val = (atis_id, atis.airport, atis.dt_start.strftime("%Y-%m-%d %H:%M:%S"), "", atis.information, atis.runway, 
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""".format("atis_log_detailed" + ("_test" if TESTING else ""))
+        val = (atis_id, atis.airport, atis.dt_start.strftime("%Y-%m-%d %H:%M:%S"), atis.information, atis.runway, 
                atis.qnh, atis.wind, atis.wind_direction, atis.wind_speed, atis.wind_notes, 
                atis.cloud,atis.visibility, atis.lvo, atis.atis_text, atis.note)
-        
+        print(val)
         mycursor.execute(sql, val)
         mydb.commit()
     else:
@@ -188,20 +182,14 @@ def save_sql_atis(atis):
 
 
 def save_sql_notam(notam):
-    import mysql.connector
+    import psycopg2
     from datetime import datetime
-    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD 
+    from adams_secrets import SQL_HOST, SQL_USER, SQL_PASSWORD, SQL_DB, SQL_PORT
 
-    mydb = mysql.connector.connect(
-        host=SQL_HOST,
-        user=SQL_USER,
-        password=SQL_PASSWORD,
-        database="atis_log",
-        #ssl_mode = "VERIFY_IDENTITY",
-        ssl_verify_identity =True,
-        ssl_ca = "/etc/ssl/cert.pem"
-        )
-    
+    connection_String = 'postgresql://{}:{}@{}:{}/atis-log-13694.{}?sslmode=verify-full'.format(
+        SQL_USER,SQL_PASSWORD,SQL_HOST,SQL_PORT,SQL_DB)
+    mydb = psycopg2.connect(connection_String)
+   
     
     mycursor = mydb.cursor()
     

@@ -1,9 +1,7 @@
 
-secrets.py
-
 docker-build.txt
 
-adams_secrets.py
+adams_secrets.*
 
 __pycache__/
 
@@ -14,3 +12,5 @@ geckodriver.log
 *.csv
 
 text_notam.py
+
+cockroach-sql/cockroach-sql-v23.2.2.windows-6.2-amd64/
